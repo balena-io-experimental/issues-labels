@@ -20,7 +20,7 @@ var authenticate = function() {
     username: process.env.GITHUB_USER,
     password: process.env.GITHUB_TOKEN
   });
-}
+};
 
 // fetch the issues/labels for all passed repos
 var run = function() {
@@ -30,7 +30,7 @@ var run = function() {
 
     fetch(arr[0], arr[1]);
   }
-}
+};
 
 var fetch = function(user, repo) {
   authenticate();
@@ -43,7 +43,7 @@ var fetch = function(user, repo) {
       throw err;
     }
 
-    commit = res[0];
+    var commit = res[0];
 
     authenticate();
     github.issues.getForRepo({
@@ -55,6 +55,10 @@ var fetch = function(user, repo) {
       order: "desc",
       since: commit.commit.author.date
     }, function(err, issues) {
+      if (err != null) {
+        throw err;
+      }
+
       var json = {};
 
       // iterate through each issue
@@ -63,12 +67,12 @@ var fetch = function(user, repo) {
 
         // iterate through each label
         for (var j = 0; j < issue.labels.length; j++) {
-          label = issue.labels[j];
+          var label = issue.labels[j];
 
           // only grab labels matching the regex
-          if (regex.test(label.name) == true) {
+          if (regex.test(label.name) === true) {
             if (json[label.name] == null) {
-              json[label.name] = []
+              json[label.name] = [];
             }
 
             json[label.name].push(issue.title);
@@ -89,7 +93,7 @@ var fetch = function(user, repo) {
       }
     });
   });
-}
+};
 
 run();
 
