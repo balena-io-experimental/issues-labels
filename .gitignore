@@ -1,0 +1,6 @@
+tags
+*.swo
+*.swp
+tmp
+.env
+node_modules
