@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-var
+const
   GitHubApi = require("github"),
   regex = new RegExp(process.argv[2], 'i')
   ;
 
-var github = new GitHubApi({
+const github = new GitHubApi({
   // optional
   debug: false,
   protocol: "https",
@@ -14,7 +14,7 @@ var github = new GitHubApi({
 });
 
 // set up a helper function for authenticating with github
-var authenticate = function() {
+let authenticate = ()=> {
   github.authenticate({
     type: "basic",
     username: process.env.GITHUB_USER,
@@ -23,27 +23,33 @@ var authenticate = function() {
 };
 
 // fetch the issues/labels for all passed repos
-var run = function() {
+let run = ()=> {
   while (process.argv.length > 3) {
-    var fqRepo = process.argv.pop();
-    var arr = fqRepo.split("/");
+    const
+      fqRepo = process.argv.pop(),
+      [user, repo] = fqRepo.split("/")
+      ;
 
-    fetch(arr[0], arr[1]);
+    fetch(user, repo);
   }
 };
 
-var fetch = function(user, repo) {
+const testLabel = (l) => {
+  return regex.test(l.name);
+};
+
+let fetch = (user, repo)=> {
   authenticate();
   github.repos.getCommits({
     user: user,
     repo: repo,
     sha: "production"
-  }, function(err, res) {
+  }, (err, res)=> {
     if (err != null) {
       throw err;
     }
 
-    var commit = res[0];
+    let commit = res[0];
 
     authenticate();
     github.issues.getForRepo({
@@ -54,40 +60,38 @@ var fetch = function(user, repo) {
       sort: "updated",
       order: "desc",
       since: commit.commit.author.date
-    }, function(err, issues) {
+    }, (err, issues)=> {
       if (err != null) {
         throw err;
       }
 
-      var json = {};
+      const json = {};
 
       // iterate through each issue
-      for (var i = 0; i < issues.length; i++) {
-        var issue = issues[i];
+      for (let i = 0; i < issues.length; i++) {
+        let issue = issues[i];
+
+        // grab the labels we care about
+        const matchingLabels = issue.labels.filter(testLabel);
 
         // iterate through each label
-        for (var j = 0; j < issue.labels.length; j++) {
-          var label = issue.labels[j];
-
-          // only grab labels matching the regex
-          if (regex.test(label.name) === true) {
-            if (json[label.name] == null) {
-              json[label.name] = [];
-            }
-
-            json[label.name].push(issue.title);
+        for (let label of matchingLabels) {
+          if (json[label.name] == null) {
+            json[label.name] = [];
           }
+
+          json[label.name].push(issue.title);
         }
       }
 
       // output the issues grouped by label
-      console.log("\n==> " + user + "/" + repo + "  ===================");
-      for (var key in json) {
+      console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
+      for (let key in json) {
         if (json.hasOwnProperty(key)) {
-          console.log("--> " + key);
+          console.log(`--> ${key}`);
 
           for (i = 0; i < json[key].length; i++) {
-            console.log("    - " + json[key][i]);
+            console.log(`    - ${json[key][i]}`);
           }
         }
       }
