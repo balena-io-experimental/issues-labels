@@ -2,6 +2,10 @@
 
 const
   GitHubApi = require("github"),
+  _ = require("lodash")
+  ;
+
+const
   regex = new RegExp(process.argv[2], 'i')
   ;
 
@@ -14,7 +18,7 @@ const github = new GitHubApi({
 });
 
 // set up a helper function for authenticating with github
-let authenticate = ()=> {
+let authenticate = () => {
   github.authenticate({
     type: "basic",
     username: process.env.GITHUB_USER,
@@ -23,7 +27,7 @@ let authenticate = ()=> {
 };
 
 // fetch the issues/labels for all passed repos
-let run = ()=> {
+let run = () => {
   while (process.argv.length > 3) {
     const
       fqRepo = process.argv.pop(),
@@ -38,18 +42,19 @@ const testLabel = (l) => {
   return regex.test(l.name);
 };
 
-let fetch = (user, repo)=> {
+let fetch = (user, repo) => {
   authenticate();
   github.repos.getCommits({
     user: user,
     repo: repo,
     sha: "production"
-  }, (err, res)=> {
+  }, (err, res) => {
     if (err != null) {
       throw err;
     }
 
-    let commit = res[0];
+    // github returns an array of commits, which have a field 'commit' as well
+    let [ ghCommit ] = res;
 
     authenticate();
     github.issues.getForRepo({
@@ -59,8 +64,8 @@ let fetch = (user, repo)=> {
       base: "master",
       sort: "updated",
       order: "desc",
-      since: commit.commit.author.date
-    }, (err, issues)=> {
+      since: ghCommit.commit.author.date
+    }, (err, issues) => {
       if (err != null) {
         throw err;
       }
@@ -68,9 +73,8 @@ let fetch = (user, repo)=> {
       const json = {};
 
       // iterate through each issue
-      for (let i = 0; i < issues.length; i++) {
-        let issue = issues[i];
-
+      //for (let i = 0; i < issues.length; i++) {
+      _.map(issues, (issue) => {
         // grab the labels we care about
         const matchingLabels = issue.labels.filter(testLabel);
 
@@ -82,19 +86,17 @@ let fetch = (user, repo)=> {
 
           json[label.name].push(issue.title);
         }
-      }
+      });
 
       // output the issues grouped by label
       console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
-      for (let key in json) {
-        if (json.hasOwnProperty(key)) {
-          console.log(`--> ${key}`);
+      _.forOwn(json, (messages, label) => {
+        console.log(`--> ${label}`);
 
-          for (i = 0; i < json[key].length; i++) {
-            console.log(`    - ${json[key][i]}`);
-          }
-        }
-      }
+        _.map(messages, (msg) => {
+          console.log(`    - ${msg}`);
+        });
+      });
     });
   });
 };

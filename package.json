@@ -12,6 +12,7 @@
   "author": "Jack Brown",
   "license": "ISC",
   "dependencies": {
-    "github": "^2.3.0"
+    "github": "^2.3.0",
+    "lodash": "^4.14.1"
   }
 }
