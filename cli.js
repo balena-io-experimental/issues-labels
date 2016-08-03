@@ -73,19 +73,15 @@ let fetch = (user, repo) => {
       const json = {};
 
       // iterate through each issue
-      //for (let i = 0; i < issues.length; i++) {
       _.map(issues, (issue) => {
         // grab the labels we care about
-        const matchingLabels = issue.labels.filter(testLabel);
-
-        // iterate through each label
-        for (let label of matchingLabels) {
+        issue.labels.filter(testLabel).forEach((label) => {
           if (json[label.name] == null) {
             json[label.name] = [];
           }
 
           json[label.name].push(issue.title);
-        }
+        });
       });
 
       // output the issues grouped by label
