@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 
 const
-  GitHubApi = require("github"),
+  Promise = require("bluebird"),
+  GitHubApi = Promise.promisifyAll(require("github")),
   _ = require("lodash")
   ;
 
@@ -48,14 +49,7 @@ let fetch = (user, repo) => {
     user: user,
     repo: repo,
     sha: "production"
-  }, (err, res) => {
-    if (err != null) {
-      throw err;
-    }
-
-    // github returns an array of commits, which have a field 'commit' as well
-    let [ ghCommit ] = res;
-
+  }).then(([ ghCommit ]) => {
     authenticate();
     github.issues.getForRepo({
       user: user,
@@ -65,15 +59,11 @@ let fetch = (user, repo) => {
       sort: "updated",
       order: "desc",
       since: ghCommit.commit.author.date
-    }, (err, issues) => {
-      if (err != null) {
-        throw err;
-      }
-
+    }).then((issues) => {
       const json = {};
 
       // iterate through each issue
-      _.map(issues, (issue) => {
+      _.each(issues, (issue) => {
         // grab the labels we care about
         issue.labels.filter(testLabel).forEach((label) => {
           if (json[label.name] == null) {
@@ -89,11 +79,15 @@ let fetch = (user, repo) => {
       _.forOwn(json, (messages, label) => {
         console.log(`--> ${label}`);
 
-        _.map(messages, (msg) => {
+        _.each(messages, (msg) => {
           console.log(`    - ${msg}`);
         });
       });
+    }).catch((err) => {
+      throw err;
     });
+  }).catch((err) => {
+    throw err;
   });
 };
 
