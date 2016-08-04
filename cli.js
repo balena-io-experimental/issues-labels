@@ -46,15 +46,15 @@ const testLabel = (l) => {
 let fetch = (user, repo) => {
   authenticate();
   github.repos.getCommits({
-    user: user,
-    repo: repo,
+    user,
+    repo,
     sha: "production"
   }).then(([ ghCommit ]) => {
     authenticate();
 
     return github.issues.getForRepo({
-      user: user,
-      repo: repo,
+      user,
+      repo,
       state: "all",
       base: "master",
       sort: "updated",
