@@ -51,7 +51,8 @@ let fetch = (user, repo) => {
     sha: "production"
   }).then(([ ghCommit ]) => {
     authenticate();
-    github.issues.getForRepo({
+
+    return github.issues.getForRepo({
       user: user,
       repo: repo,
       state: "all",
@@ -59,33 +60,34 @@ let fetch = (user, repo) => {
       sort: "updated",
       order: "desc",
       since: ghCommit.commit.author.date
-    }).then((issues) => {
-      const json = {};
+    });
+  }).then((issues) => {
+    const json = {};
 
-      // iterate through each issue
-      _.each(issues, (issue) => {
-        // grab the labels we care about
-        issue.labels.filter(testLabel).forEach((label) => {
-          if (json[label.name] == null) {
-            json[label.name] = [];
-          }
+    // iterate through each issue
+    _.each(issues, (issue) => {
+      // grab the labels we care about
+      issue.labels.filter(testLabel).forEach((label) => {
+        if (json[label.name] == null) {
+          json[label.name] = [];
+        }
 
-          json[label.name].push(issue.title);
-        });
+        json[label.name].push(issue.title);
       });
+    });
 
-      // output the issues grouped by label
-      console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
-      _.forOwn(json, (messages, label) => {
-        console.log(`--> ${label}`);
+    // output the issues grouped by label
+    console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
+    _.forOwn(json, (messages, label) => {
+      console.log(`--> ${label}`);
 
-        _.each(messages, (msg) => {
-          console.log(`    - ${msg}`);
-        });
+      _.each(messages, (msg) => {
+        console.log(`    - ${msg}`);
       });
     });
   }).catch((err) => {
-    throw err;
+    console.error(`${process.argv[1]}: error:`, err, err.stack);
+    process.exit(1);
   });
 };
 
