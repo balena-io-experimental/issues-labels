@@ -83,8 +83,6 @@ let fetch = (user, repo) => {
           console.log(`    - ${msg}`);
         });
       });
-    }).catch((err) => {
-      throw err;
     });
   }).catch((err) => {
     throw err;
