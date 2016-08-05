@@ -72,17 +72,18 @@ let fetch = (user, repo) => {
           json[label.name] = [];
         }
 
-        json[label.name].push(issue.title);
+        json[label.name].push(issue);
       });
     });
 
     // output the issues grouped by label
     console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
+    console.log(`    https://github.com/${user}/${repo}`);
     _.forOwn(json, (messages, label) => {
       console.log(`--> ${label}`);
 
       _.each(messages, (msg) => {
-        console.log(`    - ${msg}`);
+        console.log(`    - ${msg.title}\n        (${msg.url})`);
       });
     });
   }).catch((err) => {
