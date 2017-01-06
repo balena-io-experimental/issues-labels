@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./cli.js $1 \
+./app.js $1 \
 	resin-io/resin-admin \
 	resin-io/resin-ui \
 	resin-io/resin-image-maker \
