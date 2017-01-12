@@ -51,39 +51,48 @@ const fetchCommits = (user, repo) => {
   })
 }
 
-const collectIssues = (issues) => {
-  return new Promise((resolve, reject) => {
-    let json = {}
+const collectIssues = Promise.method((issues) => {
+  let json = {}
 
-    // iterate through each issue
-    _.each(issues, (issue) => {
-      // grab the labels we care about
-      issue.labels.filter(testLabel).forEach((label) => {
-        if (json[label.name] == null) {
-          json[label.name] = []
-        }
+  // iterate through each issue
+  _.each(issues, (issue) => {
+    // grab the labels we care about
+    issue.labels.filter(testLabel).forEach((label) => {
+      if (json[label.name] == null) {
+        json[label.name] = []
+      }
 
-        json[label.name].push(issue)
-      })
+      json[label.name].push(issue)
     })
+  })
 
-    resolve(json)
+  return json
+})
+
+// output the issues grouped by label
+const output = (user, repo, issues) => {
+  printRepo(user, repo)
+
+  _.forOwn(issues, (messages, label) => {
+    printLabel(label)
+
+    _.each(messages, (msg) => {
+      printMessage(msg)
+    })
   })
 }
 
-const output = (user, repo) => {
-  return (issues) => {
-    // output the issues grouped by label
-    console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`)
-    console.log(`    https://github.com/${user}/${repo}`)
-    _.forOwn(issues, (messages, label) => {
-      console.log(`--> ${label}`)
+const printRepo = (user, repo) => {
+  console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`)
+  console.log(`    https://github.com/${user}/${repo}`)
+}
 
-      _.each(messages, (msg) => {
-        console.log(`    - ${msg.title}\n        (${msg.url})`)
-      })
-    })
-  }
+const printMessage = (msg) => {
+  console.log(`    - ${msg.title}\n        (${msg.url})`)
+}
+
+const printLabel = (label) => {
+  console.log(`--> ${label}`)
 }
 
 // fetch the issues/labels for all passed repos
@@ -96,7 +105,7 @@ const run = () => {
     fetchCommits(user, repo)
     .then(filterCommits(user, repo))
     .then(collectIssues)
-    .then(output(user, repo))
+    .then(_.partial(output, user, repo))
     .catch((err) => {
       console.error(`${process.argv[1]}: error:`, err, err.stack)
       process.exit(1)
