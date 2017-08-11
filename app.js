@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
-const
-  Promise = require("bluebird"),
-  GitHubApi = Promise.promisifyAll(require("github")),
-  _ = require("lodash")
-  ;
+'use strict'
 
 const
-  regex = new RegExp(process.argv[2], 'i')
-  ;
+  _         = require("lodash"),
+  Promise   = require("bluebird"),
+  GitHubApi = Promise.promisifyAll(require("github"))
+
+const regex = new RegExp(process.argv[2], 'i')
 
 const github = new GitHubApi({
   // optional
@@ -16,42 +15,20 @@ const github = new GitHubApi({
   protocol: "https",
   followRedirects: false, // default: true
   timeout: 5000
-});
+})
 
 // set up a helper function for authenticating with github
-let authenticate = () => {
+const authenticate = () => {
   github.authenticate({
     type: "basic",
     username: process.env.GITHUB_USER,
     password: process.env.GITHUB_TOKEN
-  });
-};
+  })
+}
 
-// fetch the issues/labels for all passed repos
-let run = () => {
-  while (process.argv.length > 3) {
-    const
-      fqRepo = process.argv.pop(),
-      [user, repo] = fqRepo.split("/")
-      ;
-
-    fetch(user, repo);
-  }
-};
-
-const testLabel = (l) => {
-  return regex.test(l.name);
-};
-
-let fetch = (user, repo) => {
-  authenticate();
-  github.repos.getCommits({
-    user,
-    repo,
-    sha: "production"
-  }).then(([ ghCommit ]) => {
-    authenticate();
-
+// return a function container the user and repo
+const filterCommits = (user, repo) => {
+  return ([ghCommit]) => {
     return github.issues.getForRepo({
       user,
       repo,
@@ -60,37 +37,81 @@ let fetch = (user, repo) => {
       sort: "updated",
       order: "desc",
       since: ghCommit.commit.author.date
-    });
-  }).then((issues) => {
-    const json = {};
+    })
+  }
+}
 
-    // iterate through each issue
-    _.each(issues, (issue) => {
-      // grab the labels we care about
-      issue.labels.filter(testLabel).forEach((label) => {
-        if (json[label.name] == null) {
-          json[label.name] = [];
-        }
+const testLabel = (l) => { return regex.test(l.name) }
 
-        json[label.name].push(issue);
-      });
-    });
+const fetchCommits = (user, repo) => {
+  return github.repos.getCommits({
+    user,
+    repo,
+    sha: "production"
+  })
+}
 
-    // output the issues grouped by label
-    console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`);
-    console.log(`    https://github.com/${user}/${repo}`);
-    _.forOwn(json, (messages, label) => {
-      console.log(`--> ${label}`);
+const collectIssues = Promise.method((issues) => {
+  let json = {}
 
-      _.each(messages, (msg) => {
-        console.log(`    - ${msg.title}\n        (${msg.url})`);
-      });
-    });
-  }).catch((err) => {
-    console.error(`${process.argv[1]}: error:`, err, err.stack);
-    process.exit(1);
-  });
-};
+  // iterate through each issue
+  _.each(issues, (issue) => {
+    // grab the labels we care about
+    issue.labels.filter(testLabel).forEach((label) => {
+      if (json[label.name] == null) {
+        json[label.name] = []
+      }
 
-run();
+      json[label.name].push(issue)
+    })
+  })
+
+  return json
+})
+
+// output the issues grouped by label
+const output = (user, repo, issues) => {
+  printRepo(user, repo)
+
+  _.forOwn(issues, (messages, label) => {
+    printLabel(label)
+
+    _.each(messages, (msg) => {
+      printMessage(msg)
+    })
+  })
+}
+
+const printRepo = (user, repo) => {
+  console.log(`\n==> ${user}/${repo} ${"=".repeat(74 - (user.length + repo.length))}`)
+  console.log(`    https://github.com/${user}/${repo}`)
+}
+
+const printMessage = (msg) => {
+  console.log(`    - ${msg.title}\n        (${msg.url})`)
+}
+
+const printLabel = (label) => {
+  console.log(`--> ${label}`)
+}
+
+// fetch the issues/labels for all passed repos
+const run = () => {
+  authenticate();
+
+  while (process.argv.length > 3) {
+    const [user, repo] = process.argv.pop().split("/")
+
+    fetchCommits(user, repo)
+    .then(filterCommits(user, repo))
+    .then(collectIssues)
+    .then(_.partial(output, user, repo))
+    .catch((err) => {
+      console.error(`${process.argv[1]}: error:`, err, err.stack)
+      process.exit(1)
+    })
+  }
+}
+
+run()
 
